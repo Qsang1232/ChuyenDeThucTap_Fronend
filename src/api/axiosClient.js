@@ -1,16 +1,15 @@
-// src/api/axiosClient.js
 import axios from 'axios';
 
 const axiosClient = axios.create({
-    // Nếu có biến môi trường (trên Vercel) thì dùng, không thì dùng localhost
-    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8080/api',
-    baseURL: process.env.REACT_APP_API_URL || 'https://socialapppro-52059.web.app/api',
+    // Ưu tiên lấy link từ biến môi trường Vercel (khi đã up backend lên Render)
+    // Nếu chưa có thì dùng localhost:8081 (để chạy máy nhà)
+    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8081/api',
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-// Interceptor để tự động gắn Token vào mỗi request
+// Interceptor: Tự động gắn Token vào request
 axiosClient.interceptors.request.use(async (config) => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,6 +18,7 @@ axiosClient.interceptors.request.use(async (config) => {
     return config;
 });
 
+// Interceptor: Xử lý phản hồi
 axiosClient.interceptors.response.use(
     (response) => {
         if (response && response.data) {

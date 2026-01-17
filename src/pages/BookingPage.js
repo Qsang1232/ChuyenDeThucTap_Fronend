@@ -42,6 +42,7 @@ const BookingPage = () => {
             const bookingData = {
                 courtId: selectedCourt.id,
                 userId: user.id || 2, // Lấy ID từ token hoặc localStorage (nếu có)
+                userId: user.id,
                 date: values.date.format('YYYY-MM-DD'),
                 startTime: values.startTime.format('HH:mm:ss'),
                 endTime: values.endTime.format('HH:mm:ss'),

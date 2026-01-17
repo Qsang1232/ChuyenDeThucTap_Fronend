@@ -22,7 +22,7 @@ const CourtDetail = () => {
             try {
                 const response = await courtApi.getById(id); // Gọi API chi tiết
                 // Spring Boot có thể trả về object trực tiếp hoặc bọc trong data
-                setCourt(response.data || response); 
+                setCourt(response.data || response);
             } catch (error) {
                 console.error("Lỗi:", error);
             } finally {
@@ -32,8 +32,8 @@ const CourtDetail = () => {
         fetchDetail();
     }, [id]);
 
-    if (loading) return <div style={{textAlign:'center', marginTop:'50px'}}>⏳ Đang tải thông tin sân...</div>;
-    if (!court) return <div style={{textAlign:'center', marginTop:'50px'}}>❌ Không tìm thấy sân!</div>;
+    if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Đang tải thông tin sân...</div>;
+    if (!court) return <div style={{ textAlign: 'center', marginTop: '50px' }}>❌ Không tìm thấy sân!</div>;
 
     // Ảnh chính (Ưu tiên ảnh DB, nếu lỗi dùng ảnh mẫu)
     const mainImage = court.imageUrl || "https://via.placeholder.com/800x400";
@@ -43,17 +43,13 @@ const CourtDetail = () => {
             {/* 1. GALLERY ẢNH */}
             <div className="gallery-grid">
                 <div className="main-image">
-                    <img 
-                        src={mainImage} 
-                        alt={court.name} 
-                        onError={(e) => {e.target.onerror=null; e.target.src="https://cdn.shopvnb.com/uploads/images/tin_tuc/bo-cau-long-1.webp"}}
+                    <img
+                        src={mainImage}
+                        alt={court.name}
+                        onError={(e) => { e.target.onerror = null; e.target.src = "https://cdn.shopvnb.com/uploads/images/tin_tuc/bo-cau-long-1.webp" }}
                     />
                 </div>
-                <div className="sub-images">
-                    {/* Ảnh phụ giả lập để giao diện đẹp */}
-                    <img src="https://bestbongda.com/wp-content/uploads/2021/08/kich-thuoc-san-cau-long.jpg" alt="sub1" />
-                    <img src="https://review.com.vn/wp-content/uploads/2022/04/san-cau-long-khanh-pham-1.jpg" alt="sub2" />
-                </div>
+
             </div>
 
             <div className="detail-body">
@@ -65,7 +61,7 @@ const CourtDetail = () => {
                             <span>📍</span> {court.address}
                         </div>
                         <div className="rating-row">
-                            <span style={{color: '#f1c40f'}}>⭐⭐⭐⭐⭐</span> 
+                            <span style={{ color: '#f1c40f' }}>⭐⭐⭐⭐⭐</span>
                             <span>(4.8/5 từ 120 đánh giá)</span>
                         </div>
                     </div>
@@ -90,8 +86,28 @@ const CourtDetail = () => {
 
                     <div className="section-box">
                         <h3 className="section-title">Vị trí bản đồ</h3>
-                        <div style={{background:'#eee', height:'200px', borderRadius:'8px', display:'flex', justifyContent:'center', alignItems:'center', color:'#888'}}>
-                            (Google Maps Embed Placeholder)
+                        <div style={{ height: '300px', width: '100%', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ddd' }}>
+                            <iframe
+                                title="Bản đồ sân cầu lông"
+                                width="100%"
+                                height="100%"
+                                frameBorder="0"
+                                style={{ border: 0 }}
+                                src={`https://maps.google.com/maps?q=${encodeURIComponent(court.address || "Sân cầu lông Hà Nội")}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                                allowFullScreen
+                                loading="lazy"
+                            ></iframe>
+                        </div>
+                        {/* Nút chỉ đường (Optional) */}
+                        <div style={{ marginTop: '10px', textAlign: 'right' }}>
+                            <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(court.address)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: '#007bff', textDecoration: 'none', fontWeight: 'bold' }}
+                            >
+                                ↗️ Xem trên Google Maps lớn
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -100,7 +116,7 @@ const CourtDetail = () => {
                 <div className="right-sidebar">
                     <div className="booking-box-header">
                         <div className="price-highlight">
-                            {court.pricePerHour ? Number(court.pricePerHour).toLocaleString() : 0} 
+                            {court.pricePerHour ? Number(court.pricePerHour).toLocaleString() : 0}
                             <span className="price-unit"> đ/giờ</span>
                         </div>
                     </div>
@@ -112,7 +128,7 @@ const CourtDetail = () => {
                         </li>
                         <li>
                             <span>📅 Trạng thái:</span>
-                            <span style={{color:'green', fontWeight:'bold'}}>Đang mở cửa</span>
+                            <span style={{ color: 'green', fontWeight: 'bold' }}>Đang mở cửa</span>
                         </li>
                         <li>
                             <span>📞 Liên hệ:</span>
@@ -123,10 +139,10 @@ const CourtDetail = () => {
                     <button className="btn-book-big" onClick={() => setShowModal(true)}>
                         ĐẶT LỊCH NGAY
                     </button>
-                    
-                    <button 
+
+                    <button
                         onClick={() => navigate('/')}
-                        style={{width:'100%', marginTop:'10px', padding:'10px', background:'white', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer'}}
+                        style={{ width: '100%', marginTop: '10px', padding: '10px', background: 'white', border: '1px solid #ddd', borderRadius: '8px', cursor: 'pointer' }}
                     >
                         Quay lại
                     </button>
@@ -135,9 +151,9 @@ const CourtDetail = () => {
 
             {/* MODAL ĐẶT SÂN */}
             {showModal && (
-                <BookingModal 
-                    court={court} 
-                    onClose={() => setShowModal(false)} 
+                <BookingModal
+                    court={court}
+                    onClose={() => setShowModal(false)}
                 />
             )}
         </div>

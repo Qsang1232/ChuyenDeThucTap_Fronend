@@ -71,6 +71,7 @@ const Login = () => {
 
                 if (data.token) {
                     const userToSave = {
+                        id: data.id,
                         name: formData.email.split('@')[0],
                         token: data.token,
                         avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png",

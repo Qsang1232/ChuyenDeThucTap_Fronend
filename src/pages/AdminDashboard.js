@@ -1,10 +1,9 @@
-// src/pages/AdminDashboard.js
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Table, Button, Modal, Form, Input, TimePicker, message, Popconfirm, Card, Row, Col } from 'antd';
-import { AppstoreOutlined, CalendarOutlined, LogoutOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { Layout, Menu, Card, Table, Button, Modal, Form, Input, InputNumber, TimePicker, message, Row, Col, Tag, Popconfirm } from 'antd';
+import { AppstoreOutlined, CalendarOutlined, PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import axiosClient from '../api/axiosClient';
-import dayjs from 'dayjs'; // Dùng dayjs thay moment
+import bookingApi from '../api/bookingApi';
+import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 
 dayjs.extend(customParseFormat);
@@ -12,58 +11,55 @@ dayjs.extend(customParseFormat);
 const { Sider, Content } = Layout;
 
 const AdminDashboard = () => {
-    const [collapsed, setCollapsed] = useState(false);
-    const [selectedKey, setSelectedKey] = useState('1');
+    const [selectedKey, setSelectedKey] = useState('1'); // 1: Sân, 2: Booking
     const [courts, setCourts] = useState([]);
     const [bookings, setBookings] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCourt, setEditingCourt] = useState(null);
     const [form] = Form.useForm();
-    const navigate = useNavigate();
 
-    // --- LẤY DỮ LIỆU ---
-    const fetchCourts = async () => {
-        try {
-            const res = await axiosClient.get('/courts');
-            // Kiểm tra kỹ dữ liệu trả về là mảng hay object
-            setCourts(Array.isArray(res) ? res : (res.data || []));
-        } catch (error) {
-            console.error(error);
-            // message.error("Lỗi tải danh sách sân!");
-        }
-    };
-
-    const fetchBookings = async () => {
-        try {
-            // Giả sử API lấy hết booking là /bookings/all hoặc /bookings
-            const res = await axiosClient.get('/bookings');
-            setBookings(Array.isArray(res) ? res : (res.data || []));
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
+    // Load dữ liệu khi vào trang
     useEffect(() => {
         fetchCourts();
         fetchBookings();
     }, []);
 
-    // --- XỬ LÝ ĐĂNG XUẤT ---
-    const handleLogout = () => {
-        localStorage.clear();
-        navigate('/login');
+    const fetchCourts = async () => {
+        try {
+            const res = await axiosClient.get('/courts');
+            const data = Array.isArray(res) ? res : (res.data || []);
+            setCourts(data);
+        } catch (error) {
+            console.error("Lỗi tải sân:", error);
+        }
     };
 
-    // --- XỬ LÝ THÊM / SỬA SÂN ---
-    const handleAddCourt = () => {
+    const fetchBookings = async () => {
+        try {
+            const res = await bookingApi.getAll();
+            const data = Array.isArray(res) ? res : (res.data || []);
+            // Sắp xếp: ID lớn nhất (mới nhất) lên đầu
+            setBookings(data.sort((a, b) => b.id - a.id));
+        } catch (error) {
+            console.error("Lỗi tải booking:", error);
+        }
+    };
+
+    // --- 1. QUẢN LÝ SÂN (CRUD) ---
+    const handleAdd = () => {
         setEditingCourt(null);
         form.resetFields();
+        // Mặc định ảnh đẹp
+        form.setFieldsValue({
+            imageUrl: "https://cdn.shopvnb.com/uploads/images/tin_tuc/bo-cau-long-1.webp",
+            openingTime: dayjs('05:00:00', 'HH:mm:ss'),
+            closingTime: dayjs('22:00:00', 'HH:mm:ss'),
+        });
         setIsModalOpen(true);
     };
 
-    const handleEditCourt = (record) => {
+    const handleEdit = (record) => {
         setEditingCourt(record);
-        // Convert chuỗi giờ sang dayjs object để hiện lên form
         form.setFieldsValue({
             ...record,
             openingTime: record.openingTime ? dayjs(record.openingTime, 'HH:mm:ss') : null,
@@ -72,115 +68,232 @@ const AdminDashboard = () => {
         setIsModalOpen(true);
     };
 
-    const handleDeleteCourt = async (id) => {
-        try {
-            await axiosClient.delete(`/courts/${id}`);
-            message.success("Xóa sân thành công!");
-            fetchCourts();
-        } catch (error) {
-            message.error("Lỗi khi xóa sân!");
+    const handleDelete = async (id) => {
+        if (window.confirm("Cảnh báo: Xóa sân sẽ xóa luôn lịch sử đặt của sân đó. Tiếp tục?")) {
+            try {
+                await axiosClient.delete(`/courts/${id}`);
+                message.success("Đã xóa sân!");
+                fetchCourts();
+            } catch (error) {
+                message.error("Lỗi xóa sân (Có thể do ràng buộc dữ liệu).");
+            }
         }
     };
 
     const handleSave = async (values) => {
-        try {
-            // Convert dayjs object thành chuỗi HH:mm:ss gửi về server
-            const payload = {
-                ...values,
-                openingTime: values.openingTime ? values.openingTime.format('HH:mm:ss') : null,
-                closingTime: values.closingTime ? values.closingTime.format('HH:mm:ss') : null,
-                categoryId: 1 // Hardcode tạm nếu chưa có category
-            };
+        const payload = {
+            ...values,
+            openingTime: values.openingTime ? values.openingTime.format('HH:mm:ss') : '05:00:00',
+            closingTime: values.closingTime ? values.closingTime.format('HH:mm:ss') : '22:00:00',
+            categoryId: 1
+        };
 
+        try {
             if (editingCourt) {
                 await axiosClient.put(`/courts/${editingCourt.id}`, payload);
                 message.success("Cập nhật sân thành công!");
             } else {
                 await axiosClient.post('/courts', payload);
-                message.success("Thêm sân mới thành công!");
+                message.success("Thêm sân thành công!");
             }
             setIsModalOpen(false);
             fetchCourts();
         } catch (error) {
-            message.error("Lỗi lưu thông tin sân!");
+            message.error("Lỗi lưu dữ liệu!");
         }
     };
 
-    // --- CẤU HÌNH CỘT BẢNG ---
+    // --- 2. QUẢN LÝ ĐẶT SÂN ---
+
+    // Duyệt đơn (CONFIRM)
+    const handleConfirmBooking = async (id) => {
+        try {
+            await axiosClient.put(`/bookings/${id}/confirm`);
+            message.success("Đã duyệt đơn thành công!");
+            fetchBookings();
+        } catch (error) {
+            message.error("Lỗi duyệt đơn!");
+        }
+    };
+
+    // Hủy đơn (CANCEL)
+    const handleCancelBooking = async (id) => {
+        try {
+            await axiosClient.post(`/bookings/${id}/cancel`);
+            message.success("Đã hủy đơn thành công!");
+            fetchBookings();
+        } catch (error) {
+            const msg = error.response?.data?.message || "Lỗi hủy đơn!";
+            message.error(msg);
+        }
+    };
+
+    // Cấu hình Cột Bảng Sân
     const courtColumns = [
-        { title: 'ID', dataIndex: 'id', key: 'id', width: 50 },
-        { title: 'Tên sân', dataIndex: 'name', key: 'name' },
-        { title: 'Địa chỉ', dataIndex: 'address', key: 'address' },
-        { title: 'Giá/Giờ', dataIndex: 'pricePerHour', key: 'pricePerHour', render: (val) => val ? val.toLocaleString() : 0 },
-        { title: 'Giờ mở', dataIndex: 'openingTime', key: 'openingTime' },
-        { title: 'Giờ đóng', dataIndex: 'closingTime', key: 'closingTime' },
+        { title: 'ID', dataIndex: 'id', width: 50 },
+        { title: 'Tên sân', dataIndex: 'name', width: 200 },
+        { title: 'Địa chỉ', dataIndex: 'address' },
+        { title: 'Giá/h', dataIndex: 'pricePerHour', render: (val) => val ? val.toLocaleString() : 0 },
         {
             title: 'Hành động',
-            key: 'action',
+            width: 150,
             render: (_, record) => (
-                <>
-                    <Button icon={<EditOutlined />} onClick={() => handleEditCourt(record)} style={{ marginRight: 8, color: 'blue' }} />
-                    <Popconfirm title="Bạn có chắc muốn xóa?" onConfirm={() => handleDeleteCourt(record.id)}>
-                        <Button icon={<DeleteOutlined />} danger />
-                    </Popconfirm>
-                </>
-            ),
-        },
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button type="primary" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
+                    <Button type="primary" danger size="small" icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)} />
+                </div>
+            )
+        }
     ];
 
+    // Cấu hình Cột Bảng Booking
     const bookingColumns = [
-        { title: 'ID', dataIndex: 'id', key: 'id' },
-        { title: 'User ID', dataIndex: 'userId', key: 'userId' }, // Nếu backend trả về username thì đổi thành dataIndex: 'username'
-        { title: 'Sân ID', dataIndex: 'courtId', key: 'courtId' }, // Tương tự với courtName
-        { title: 'Ngày', dataIndex: 'date', key: 'date', render: (t) => t ? dayjs(t).format('DD/MM/YYYY') : '' },
-        { title: 'Giờ', key: 'time', render: (_, r) => `${r.startTime ? r.startTime.slice(0, 5) : ''} - ${r.endTime ? r.endTime.slice(0, 5) : ''}` },
-        { title: 'Tổng tiền', dataIndex: 'totalPrice', key: 'totalPrice', render: (val) => val ? val.toLocaleString() : '' },
-        { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (st) => <span style={{ color: st === 'APPROVED' ? 'green' : 'orange' }}>{st}</span> }
+        { title: 'ID', dataIndex: 'id', width: 50 },
+        {
+            title: 'Khách hàng',
+            dataIndex: 'username',
+            render: (text) => <span style={{ fontWeight: 'bold' }}>{text || 'Khách vãng lai'}</span>
+        },
+        { title: 'Sân', dataIndex: 'courtName' },
+        { title: 'Ngày', dataIndex: 'startTime', render: (t) => t ? dayjs(t).format('DD/MM/YYYY') : '' },
+        { title: 'Giờ', render: (_, r) => r.startTime ? `${dayjs(r.startTime).format('HH:mm')} - ${dayjs(r.endTime).format('HH:mm')}` : '' },
+        { title: 'Tiền', dataIndex: 'totalPrice', render: (val) => val ? <span style={{ color: 'red', fontWeight: 'bold' }}>{val.toLocaleString()}</span> : 0 },
+        {
+            title: 'Trạng thái',
+            dataIndex: 'status',
+            align: 'center',
+            render: (status) => {
+                let color = 'default';
+                let text = status;
+
+                if (status === 'CONFIRMED') { color = 'green'; text = 'Đã duyệt'; }
+                else if (status === 'PENDING') { color = 'orange'; text = 'Chờ duyệt'; }
+                else if (status === 'WAITING') { color = 'gold'; text = 'Đợi xác nhận'; }
+                else if (status === 'CANCELLED') { color = 'red'; text = 'Đã hủy'; }
+
+                return <Tag color={color}>{text}</Tag>;
+            }
+        },
+        {
+            title: 'Hành động',
+            render: (_, record) => (
+                <div style={{ display: 'flex', gap: '5px' }}>
+                    {/* Nút DUYỆT: Hiện khi PENDING hoặc WAITING */}
+                    {(record.status === 'PENDING' || record.status === 'WAITING') && (
+                        <Popconfirm
+                            title={record.status === 'WAITING' ? "Xác nhận tiền đã về tài khoản?" : "Duyệt đơn này?"}
+                            onConfirm={() => handleConfirmBooking(record.id)}
+                        >
+                            <Button type="primary" size="small" style={{ background: '#2ecc71', borderColor: '#2ecc71' }} icon={<CheckCircleOutlined />}>
+                                {record.status === 'WAITING' ? 'Duyệt TT' : 'Duyệt'}
+                            </Button>
+                        </Popconfirm>
+                    )}
+
+                    {/* Nút HỦY: Hiện khi chưa bị Hủy và chưa Hoàn thành */}
+                    {(record.status !== 'CANCELLED' && record.status !== 'COMPLETED') && (
+                        <Popconfirm title="Bạn chắc chắn muốn hủy đơn này?" onConfirm={() => handleCancelBooking(record.id)} okText="Hủy ngay" cancelText="Không">
+                            <Button type="primary" danger size="small" icon={<CloseCircleOutlined />}>Hủy</Button>
+                        </Popconfirm>
+                    )}
+                </div>
+            )
+        }
     ];
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed}>
-                <div style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.2)', textAlign: 'center', color: 'white', lineHeight: '32px' }}>ADMIN</div>
-                <Menu theme="dark" defaultSelectedKeys={['1']} mode="inline" onClick={(e) => setSelectedKey(e.key)}>
-                    <Menu.Item key="1" icon={<AppstoreOutlined />}>Quản lý sân</Menu.Item>
-                    <Menu.Item key="2" icon={<CalendarOutlined />}>Đơn đặt sân</Menu.Item>
-                    <Menu.Item key="3" icon={<LogoutOutlined />} onClick={handleLogout}>Đăng xuất</Menu.Item>
-                </Menu>
+            <Sider theme="light" collapsible width={250}>
+                <div className="p-4 text-center font-bold text-xl text-green-600 border-b">ADMIN PANEL</div>
+                <Menu
+                    mode="inline"
+                    defaultSelectedKeys={['1']}
+                    onClick={(e) => setSelectedKey(e.key)}
+                    style={{ marginTop: '10px' }}
+                    items={[
+                        { key: '1', icon: <AppstoreOutlined />, label: 'Quản lý Sân Cầu Lông' },
+                        { key: '2', icon: <CalendarOutlined />, label: 'Quản lý Đặt Sân' },
+                    ]}
+                />
             </Sider>
-            <Layout className="site-layout">
-                <Content style={{ margin: '16px' }}>
-                    <Card>
-                        {selectedKey === '1' && (
-                            <>
-                                <Button type="primary" icon={<PlusOutlined />} onClick={handleAddCourt} style={{ marginBottom: 16 }}>Thêm sân mới</Button>
-                                <Table dataSource={courts} columns={courtColumns} rowKey="id" />
-                            </>
-                        )}
-                        {selectedKey === '2' && (
-                            <Table dataSource={bookings} columns={bookingColumns} rowKey="id" />
-                        )}
-                    </Card>
+            <Layout className="p-6 bg-gray-100">
+                <Content>
+                    {selectedKey === '1' ? (
+                        <Card
+                            title="Danh sách Sân Cầu Lông"
+                            extra={
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <Button icon={<ReloadOutlined />} onClick={fetchCourts}>Tải lại</Button>
+                                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} style={{ background: '#2ecc71', borderColor: '#2ecc71' }}>Thêm Sân</Button>
+                                </div>
+                            }
+                        >
+                            <Table dataSource={courts} columns={courtColumns} rowKey="id" pagination={{ pageSize: 6 }} />
+                        </Card>
+                    ) : (
+                        <Card
+                            title="Danh sách Đơn Đặt Sân"
+                            extra={<Button icon={<ReloadOutlined />} onClick={fetchBookings}>Làm mới</Button>}
+                        >
+                            <Table dataSource={bookings} columns={bookingColumns} rowKey="id" pagination={{ pageSize: 8 }} />
+                        </Card>
+                    )}
                 </Content>
             </Layout>
 
-            {/* Modal Thêm/Sửa Sân */}
-            <Modal title={editingCourt ? "Sửa sân" : "Thêm sân mới"} open={isModalOpen} onCancel={() => setIsModalOpen(false)} footer={null}>
+            {/* Modal Form */}
+            <Modal
+                title={editingCourt ? "Sửa Sân" : "Thêm Sân"}
+                open={isModalOpen}
+                onCancel={() => setIsModalOpen(false)}
+                footer={null}
+                width={600}
+            >
                 <Form form={form} layout="vertical" onFinish={handleSave}>
-                    <Form.Item name="name" label="Tên sân" rules={[{ required: true }]}> <Input /> </Form.Item>
-                    <Form.Item name="address" label="Địa chỉ"> <Input /> </Form.Item>
-                    <Form.Item name="pricePerHour" label="Giá mỗi giờ" rules={[{ required: true }]}> <Input type="number" /> </Form.Item>
+                    <Form.Item name="name" label="Tên sân" rules={[{ required: true, message: 'Vui lòng nhập tên sân' }]}>
+                        <Input placeholder="Ví dụ: Sân Cầu Lông Số 1" />
+                    </Form.Item>
+
+                    <Form.Item name="address" label="Địa chỉ" rules={[{ required: true, message: 'Vui lòng nhập địa chỉ' }]}>
+                        <Input placeholder="Ví dụ: 123 Nguyễn Trãi, Quận 1" />
+                    </Form.Item>
+
                     <Row gutter={16}>
                         <Col span={12}>
-                            <Form.Item name="openingTime" label="Giờ mở cửa"> <TimePicker format="HH:mm:ss" style={{ width: '100%' }} /> </Form.Item>
+                            <Form.Item name="pricePerHour" label="Giá (VNĐ/h)" rules={[{ required: true, message: 'Nhập giá tiền' }]}>
+                                <InputNumber style={{ width: '100%' }} min={0} step={1000} formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={value => value.replace(/\$\s?|(,*)/g, '')} />
+                            </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item name="closingTime" label="Giờ đóng cửa"> <TimePicker format="HH:mm:ss" style={{ width: '100%' }} /> </Form.Item>
+                            <Form.Item name="imageUrl" label="Link Ảnh">
+                                <Input placeholder="https://..." />
+                            </Form.Item>
                         </Col>
                     </Row>
-                    <Form.Item name="imageUrl" label="Link ảnh"> <Input /> </Form.Item>
-                    <Form.Item name="description" label="Mô tả"> <Input.TextArea /> </Form.Item>
-                    <Button type="primary" htmlType="submit" block>Lưu thông tin</Button>
+
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="openingTime" label="Giờ mở cửa" rules={[{ required: true, message: 'Chọn giờ mở' }]}>
+                                <TimePicker format="HH:mm" style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="closingTime" label="Giờ đóng cửa" rules={[{ required: true, message: 'Chọn giờ đóng' }]}>
+                                <TimePicker format="HH:mm" style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Form.Item name="description" label="Mô tả">
+                        <Input.TextArea rows={3} placeholder="Mô tả về sân..." />
+                    </Form.Item>
+
+                    <div className="flex justify-end gap-2 mt-4">
+                        <Button onClick={() => setIsModalOpen(false)}>Hủy</Button>
+                        <Button type="primary" htmlType="submit" style={{ background: '#2ecc71', borderColor: '#2ecc71' }}>
+                            {editingCourt ? "Cập nhật" : "Lưu lại"}
+                        </Button>
+                    </div>
                 </Form>
             </Modal>
         </Layout>

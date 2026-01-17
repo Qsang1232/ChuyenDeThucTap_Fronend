@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import courtApi from "../api/courtApi";
+import { Input, Select, Card, Tag, Button, Spin, Row, Col, Typography } from 'antd';
+import { SearchOutlined, EnvironmentOutlined } from '@ant-design/icons';
+
+const { Title, Text } = Typography;
+const { Meta } = Card;
 
 const Home = () => {
   const [courts, setCourts] = useState([]);
@@ -11,7 +16,6 @@ const Home = () => {
     const fetchCourts = async () => {
       try {
         const response = await courtApi.getAll();
-        // Xử lý response tùy theo backend trả về mảng hay object
         const data = Array.isArray(response) ? response : (response.data || []);
         setCourts(data);
       } catch (error) {
@@ -35,64 +39,136 @@ const Home = () => {
     });
   }, [filters, courts]);
 
-  const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
-
   return (
-    <>
-      <div style={{ background: '#2ecc71', color: 'white', padding: '60px 0', textAlign: 'center', marginBottom: '30px' }}>
-        <h1 style={{ fontSize: '2.5rem', margin: 0 }}>🏸 ĐẶT SÂN CẦU LÔNG DỄ DÀNG</h1>
-        <p>Tìm sân, đặt lịch và thanh toán online chỉ trong 30 giây</p>
-      </div>
+    <div style={{ background: '#f0f2f5', minHeight: '100vh', paddingBottom: '50px' }}>
 
-      <div className="container" id="search" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-        <div style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', display: 'flex', gap: '20px', marginBottom: '40px' }}>
-          <input
-            name="keyword"
-            placeholder="Tìm tên sân..."
+      {/* 1. HERO BANNER - HIỆN ĐẠI */}
+      <div style={{
+        backgroundImage: 'linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url("/banner.jpg")',
+
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        height: '450px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        color: 'white',
+        textAlign: 'center',
+        padding: '0 20px'
+      }}>
+        <Title level={1} style={{ color: 'white', fontSize: '3.5rem', marginBottom: '10px', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+          ĐẶT SÂN CẦU LÔNG ONLINE
+        </Title>
+        <Text style={{ color: '#ecf0f1', fontSize: '1.2rem', maxWidth: '600px' }}>
+          Tìm kiếm sân chơi gần bạn, đặt lịch nhanh chóng và thanh toán tiện lợi chỉ trong vài bước.
+        </Text>
+
+        {/* SEARCH BOX NỔI BẬT */}
+        <div style={{
+          background: 'white',
+          padding: '15px',
+          borderRadius: '50px',
+          display: 'flex',
+          gap: '10px',
+          marginTop: '40px',
+          width: '100%',
+          maxWidth: '800px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
+        }}>
+          <Input
+            size="large"
+            prefix={<SearchOutlined style={{ color: '#bdc3c7' }} />}
+            placeholder="Tìm tên sân, địa điểm..."
+            bordered={false}
             value={filters.keyword}
-            onChange={handleFilterChange}
-            style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
+            onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
+            style={{ flex: 1 }}
           />
-          <select name="priceRange" onChange={handleFilterChange} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ddd' }}>
-            <option value="all">Mọi mức giá</option>
-            <option value="low">Dưới 80k</option>
-            <option value="mid">80k - 100k</option>
-            <option value="high">Trên 100k</option>
-          </select>
-        </div>
-
-        <h2 style={{ color: '#2c3e50', borderLeft: '5px solid #2ecc71', paddingLeft: '15px' }}>
-          {loading ? "Đang tải..." : "Danh sách sân nổi bật"}
-        </h2>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '30px', paddingBottom: '50px' }}>
-          {filteredCourts.map((court) => (
-            <div key={court.id} style={{ background: 'white', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', transition: '0.3s' }}>
-              <Link to={`/court/${court.id}`}>
-                <img
-                  src={court.imageUrl || "https://cdn.shopvnb.com/uploads/images/tin_tuc/bo-cau-long-1.webp"}
-                  alt={court.name}
-                  style={{ width: '100%', height: '200px', objectFit: 'cover' }}
-                  onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/400x200?text=San+Cau+Long" }}
-                />
-              </Link>
-              <div style={{ padding: '15px' }}>
-                <h3 style={{ margin: '0 0 10px', fontSize: '1.1rem' }}>{court.name}</h3>
-                <p style={{ color: '#7f8c8d', fontSize: '0.9rem' }}>📍 {court.address}</p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px' }}>
-                  <span style={{ color: '#e74c3c', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                    {Number(court.pricePerHour).toLocaleString()} đ/h
-                  </span>
-                  <Link to={`/court/${court.id}`} style={{ background: '#2ecc71', color: 'white', padding: '8px 15px', borderRadius: '5px', textDecoration: 'none', fontSize: '0.9rem' }}>
-                    Đặt Sân
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))}
+          <div style={{ width: '1px', background: '#eee' }}></div>
+          <Select
+            size="large"
+            defaultValue="all"
+            bordered={false}
+            style={{ width: '180px' }}
+            onChange={(val) => setFilters({ ...filters, priceRange: val })}
+          >
+            <Select.Option value="all">Mọi mức giá</Select.Option>
+            <Select.Option value="low">Dưới 80k</Select.Option>
+            <Select.Option value="mid">80k - 100k</Select.Option>
+            <Select.Option value="high">Trên 100k</Select.Option>
+          </Select>
+          <Button type="primary" size="large" style={{ borderRadius: '40px', padding: '0 40px', background: '#27ae60', border: 'none', fontWeight: 'bold' }}>
+            TÌM KIẾM
+          </Button>
         </div>
       </div>
-    </>
+
+      {/* 2. DANH SÁCH SÂN */}
+      <div className="container mx-auto px-6 mt-12">
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '30px' }}>
+          <div style={{ width: '5px', height: '30px', background: '#27ae60', marginRight: '15px', borderRadius: '5px' }}></div>
+          <Title level={2} style={{ margin: 0, color: '#2c3e50' }}>Sân Nổi Bật</Title>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>
+        ) : (
+          <Row gutter={[30, 30]}>
+            {filteredCourts.map((court) => (
+              <Col xs={24} sm={12} md={8} lg={6} key={court.id}>
+                <Link to={`/court/${court.id}`}>
+                  <Card
+                    hoverable
+                    style={{ borderRadius: '15px', overflow: 'hidden', border: 'none', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', height: '100%' }}
+                    bodyStyle={{ padding: '20px' }}
+                    cover={
+                      <div style={{ overflow: 'hidden', height: '220px', position: 'relative' }}>
+                        <img
+                          alt={court.name}
+                          src={court.imageUrl || "https://cdn.shopvnb.com/uploads/images/tin_tuc/bo-cau-long-1.webp"}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }}
+                          className="hover:scale-110"
+                          onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/400x200" }}
+                        />
+                        <Tag color="#27ae60" style={{ position: 'absolute', top: '15px', right: '15px', border: 'none', padding: '5px 10px', fontWeight: 'bold' }}>
+                          Đang mở cửa
+                        </Tag>
+                      </div>
+                    }
+                  >
+                    <Meta
+                      title={<div style={{ fontSize: '1.2rem', color: '#2c3e50', marginBottom: '5px' }}>{court.name}</div>}
+                      description={
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#7f8c8d', marginBottom: '10px' }}>
+                            <EnvironmentOutlined />
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{court.address}</span>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginTop: '15px' }}>
+                            <div>
+                              <Text type="secondary" style={{ fontSize: '0.8rem' }}>Giá từ</Text>
+                              <div style={{ color: '#e74c3c', fontSize: '1.4rem', fontWeight: '800', lineHeight: 1 }}>
+                                {Number(court.pricePerHour).toLocaleString()}đ
+                                <span style={{ fontSize: '0.9rem', fontWeight: 'normal', color: '#95a5a6' }}>/h</span>
+                              </div>
+                            </div>
+                            <Button type="primary" shape="round" style={{ background: '#eefff3', color: '#27ae60', border: 'none', fontWeight: 'bold' }}>
+                              Đặt ngay
+                            </Button>
+                          </div>
+                        </div>
+                      }
+                    />
+                  </Card>
+                </Link>
+              </Col>
+            ))}
+          </Row>
+        )}
+      </div>
+    </div>
   );
 };
 

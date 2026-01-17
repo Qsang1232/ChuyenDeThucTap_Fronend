@@ -4,6 +4,7 @@ import axios from 'axios';
 const axiosClient = axios.create({
     // Nếu có biến môi trường (trên Vercel) thì dùng, không thì dùng localhost
     baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8080/api',
+    baseURL: process.env.REACT_APP_API_URL || 'https://socialapppro-52059.web.app/api',
     headers: {
         'Content-Type': 'application/json',
     },

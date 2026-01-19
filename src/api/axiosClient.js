@@ -1,8 +1,9 @@
 import axios from 'axios';
 
 const axiosClient = axios.create({
-    // Thay link localhost bằng link Render
-    baseURL: 'https://badminton-api-y86c.onrender.com/api',
+    // Ưu tiên lấy biến môi trường từ Vercel. 
+    // Nếu Vercel bị lỗi biến, nó sẽ tự động dùng link Render cứng phía sau.
+    baseURL: process.env.REACT_APP_API_URL || 'https://badminton-api-y86c.onrender.com/api',
     headers: {
         'Content-Type': 'application/json',
     },

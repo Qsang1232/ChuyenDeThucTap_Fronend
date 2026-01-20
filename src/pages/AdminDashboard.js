@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Card, Table, Button, Modal, Form, Input, InputNumber, TimePicker, message, Row, Col, Tag, Popconfirm } from 'antd';
 import { AppstoreOutlined, CalendarOutlined, PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined } from '@ant-design/icons';
-import axiosClient from './api/axiosClient';
+import axiosClient from '../api/axiosClient';
 import bookingApi from '../api/bookingApi';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';

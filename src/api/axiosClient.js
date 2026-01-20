@@ -1,15 +1,14 @@
 import axios from 'axios';
 
 const axiosClient = axios.create({
-    // Ưu tiên lấy biến môi trường từ Vercel. 
-    // Nếu Vercel bị lỗi biến, nó sẽ tự động dùng link Render cứng phía sau.
-    baseURL: process.env.REACT_APP_API_URL || 'https://badminton-api-y86c.onrender.com/api',
+    // Đọc baseURL từ biến môi trường đã định nghĩa trong file .env
+    baseURL: process.env.REACT_APP_API_URL,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-// Interceptor: Tự động gắn Token vào request
+// Interceptor: Tự động gắn Token vào mỗi request gửi đi
 axiosClient.interceptors.request.use(async (config) => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -18,15 +17,18 @@ axiosClient.interceptors.request.use(async (config) => {
     return config;
 });
 
-// Interceptor: Xử lý phản hồi
+// Interceptor: Xử lý dữ liệu trả về từ API
 axiosClient.interceptors.response.use(
     (response) => {
+        // Chỉ trả về phần 'data' của response để code ở các nơi khác gọn hơn
         if (response && response.data) {
             return response.data;
         }
         return response;
     },
     (error) => {
+        // Ném lỗi để các hàm gọi API có thể bắt và xử lý (ví dụ: hiển thị thông báo)
+        console.error('API Error:', error.response || error.message);
         throw error;
     }
 );

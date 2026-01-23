@@ -1,93 +1,150 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Modal, Form, DatePicker, TimePicker, Input, message, Typography } from 'antd';
+import dayjs from 'dayjs';
 import bookingApi from '../api/bookingApi';
 
-const BookingModal = ({ court, onClose }) => {
-    const [bookingData, setBookingData] = useState({
-        date: '',
-        startTime: '',
-        endTime: ''
-    });
-    const [loading, setLoading] = useState(false);
+const { Text } = Typography;
 
-    const handleChange = (e) => {
-        setBookingData({ ...bookingData, [e.target.name]: e.target.value });
+const BookingModal = ({ court, onClose, onSuccess }) => { // Thêm prop onSuccess để load lại trang nếu cần
+    const [form] = Form.useForm();
+    const [loading, setLoading] = useState(false);
+    const [totalPrice, setTotalPrice] = useState(0);
+
+    // Reset form mỗi khi mở modal mới
+    useEffect(() => {
+        if (court) {
+            form.resetFields();
+            setTotalPrice(0);
+        }
+    }, [court, form]);
+
+    // Hàm tính tiền khi thay đổi giờ
+    const handleValuesChange = (_, allValues) => {
+        const { date, timeRange } = allValues;
+
+        if (date && timeRange && timeRange.length === 2) {
+            const start = timeRange[0];
+            const end = timeRange[1];
+
+            // Tính số giờ chơi (phút / 60)
+            const durationInMinutes = end.diff(start, 'minute');
+            const durationInHours = durationInMinutes / 60;
+
+            if (durationInHours > 0) {
+                const total = durationInHours * court.pricePerHour;
+                setTotalPrice(total);
+            } else {
+                setTotalPrice(0);
+            }
+        }
     };
 
-    const handleBooking = async (e) => {
-        e.preventDefault();
-
-        // Kiểm tra đăng nhập
+    const handleBooking = async (values) => {
+        // 1. Kiểm tra đăng nhập
         const user = JSON.parse(localStorage.getItem('currentUser'));
         if (!user) {
-            alert("Vui lòng đăng nhập để đặt sân!");
+            message.warning("Vui lòng đăng nhập để đặt sân!");
+            // navigate('/login'); // Nếu có hook navigate
             return;
         }
 
         setLoading(true);
         try {
-            // Format dữ liệu gửi lên Backend: "2023-12-25T14:00:00"
-            const startDateTime = `${bookingData.date}T${bookingData.startTime}:00`;
-            const endDateTime = `${bookingData.date}T${bookingData.endTime}:00`;
+            // 2. Format dữ liệu chuẩn ISO 8601
+            // values.date là object dayjs -> format 'YYYY-MM-DD'
+            // values.timeRange[0] là object dayjs -> format 'HH:mm:ss'
 
+            const dateStr = values.date.format('YYYY-MM-DD');
+            const startTimeStr = values.timeRange[0].format('HH:mm:ss');
+            const endTimeStr = values.timeRange[1].format('HH:mm:ss');
+
+            // Ghép lại thành LocalDateTime: "2024-05-20T14:30:00"
+            const startDateTime = `${dateStr}T${startTimeStr}`;
+            const endDateTime = `${dateStr}T${endTimeStr}`;
+
+            // Gọi API
             await bookingApi.create({
                 courtId: court.id,
                 startTime: startDateTime,
                 endTime: endDateTime
             });
 
-            alert("✅ Đặt sân thành công! Vui lòng kiểm tra lịch sử.");
-            onClose();
+            message.success("✅ Đặt sân thành công! Vui lòng kiểm tra lịch sử.");
+            onClose(); // Đóng modal
+            if (onSuccess) onSuccess(); // Gọi callback để refresh dữ liệu bên ngoài (nếu có)
+
         } catch (error) {
-            console.error(error);
-            alert("❌ Đặt sân thất bại: " + (error.response?.data?.message || "Lỗi hệ thống"));
+            console.error("Lỗi đặt sân:", error);
+            const errorMessage = error.response?.data?.message || "Lỗi hệ thống, vui lòng thử lại sau.";
+            message.error("❌ Đặt sân thất bại: " + errorMessage);
         } finally {
             setLoading(false);
         }
     };
 
-    if (!court) return null;
+    // Nếu không có court thì không render gì cả (hoặc Modal sẽ tự quản lý visible qua props open)
+    // Ở đây ta giả định component cha sẽ unmount hoặc ẩn component này
 
     return (
-        <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999
-        }} onClick={onClose}>
-            <div style={{ background: '#fff', padding: '30px', borderRadius: '10px', width: '400px', maxWidth: '90%' }} onClick={(e) => e.stopPropagation()}>
-                <h2 style={{ marginTop: 0, color: '#2ecc71', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
-                    Đặt sân: {court.name}
-                </h2>
+        <Modal
+            title={`Đặt sân: ${court?.name}`}
+            open={!!court} // Modal mở khi có thông tin court
+            onCancel={onClose}
+            onOk={() => form.submit()}
+            confirmLoading={loading}
+            okText="Xác nhận đặt"
+            cancelText="Hủy"
+            okButtonProps={{ style: { backgroundColor: '#27ae60', borderColor: '#27ae60' } }}
+        >
+            <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleBooking}
+                onValuesChange={handleValuesChange}
+            >
+                {/* Chọn ngày */}
+                <Form.Item
+                    name="date"
+                    label="Ngày chơi"
+                    rules={[{ required: true, message: 'Vui lòng chọn ngày!' }]}
+                >
+                    <DatePicker
+                        style={{ width: '100%' }}
+                        format="DD/MM/YYYY"
+                        // Chặn ngày quá khứ
+                        disabledDate={(current) => current && current < dayjs().endOf('day').subtract(1, 'day')}
+                    />
+                </Form.Item>
 
-                <form onSubmit={handleBooking} style={{ marginTop: '20px' }}>
-                    <div style={{ marginBottom: '15px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Ngày chơi:</label>
-                        <input type="date" name="date" required onChange={handleChange} style={{ width: '100%', padding: '8px' }} />
+                {/* Chọn giờ (Khoảng thời gian) */}
+                <Form.Item
+                    name="timeRange"
+                    label="Khung giờ (Bắt đầu - Kết thúc)"
+                    rules={[{ required: true, message: 'Vui lòng chọn giờ!' }]}
+                >
+                    <TimePicker.RangePicker
+                        format="HH:mm"
+                        minuteStep={30} // Chỉ cho chọn chẵn 30 phút (tuỳ chỉnh)
+                        style={{ width: '100%' }}
+                    />
+                </Form.Item>
+
+                {/* Hiển thị giá tiền */}
+                <div style={{ background: '#f6ffed', padding: '15px', borderRadius: '8px', border: '1px solid #b7eb8f' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                        <Text type="secondary">Đơn giá:</Text>
+                        <Text strong>{Number(court?.pricePerHour).toLocaleString()} đ/h</Text>
                     </div>
-
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Giờ bắt đầu:</label>
-                            <input type="time" name="startTime" required onChange={handleChange} style={{ width: '100%', padding: '8px' }} />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Giờ kết thúc:</label>
-                            <input type="time" name="endTime" required onChange={handleChange} style={{ width: '100%', padding: '8px' }} />
-                        </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', borderTop: '1px dashed #d9d9d9', paddingTop: '10px' }}>
+                        <Text style={{ fontSize: '16px' }}>Tạm tính:</Text>
+                        <Text type="danger" style={{ fontSize: '20px', fontWeight: 'bold' }}>
+                            {totalPrice.toLocaleString()} đ
+                        </Text>
                     </div>
-
-                    <p style={{ fontSize: '0.9rem', color: '#7f8c8d' }}>
-                        💰 Giá sân: <b>{Number(court.pricePerHour).toLocaleString()} đ/h</b>
-                    </p>
-
-                    <div style={{ marginTop: '25px', display: 'flex', gap: '10px' }}>
-                        <button type="button" onClick={onClose} style={{ flex: 1, padding: '10px', border: '1px solid #ddd', background: 'white', cursor: 'pointer', borderRadius: '5px' }}>Hủy</button>
-                        <button type="submit" disabled={loading} style={{ flex: 1, padding: '10px', border: 'none', background: '#2ecc71', color: 'white', fontWeight: 'bold', cursor: 'pointer', borderRadius: '5px' }}>
-                            {loading ? "Đang xử lý..." : "XÁC NHẬN ĐẶT"}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                </div>
+            </Form>
+        </Modal>
     );
 };
 
-export default BookingModal;
+export default BookingModal;    

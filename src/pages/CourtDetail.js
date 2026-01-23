@@ -1,9 +1,11 @@
-// src/pages/CourtDetail.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import courtApi from '../api/courtApi';
 import BookingModal from '../components/BookingModal';
-import './CourtDetail.css'; // Import CSS
+import './CourtDetail.css';
+
+// --- THÊM: Định nghĩa URL Backend ---
+const BACKEND_URL = "http://localhost:8080";
 
 const CourtDetail = () => {
     const { id } = useParams();
@@ -12,7 +14,6 @@ const CourtDetail = () => {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
 
-    // Dữ liệu giả về tiện ích (Vì DB hiện tại chưa có bảng này, thêm vào cho đẹp giống Mewin)
     const services = [
         "Wifi miễn phí", "Bãi giữ xe", "Canteen", "Cho thuê vợt", "Phòng thay đồ", "Ghế chờ"
     ];
@@ -20,8 +21,7 @@ const CourtDetail = () => {
     useEffect(() => {
         const fetchDetail = async () => {
             try {
-                const response = await courtApi.getById(id); // Gọi API chi tiết
-                // Spring Boot có thể trả về object trực tiếp hoặc bọc trong data
+                const response = await courtApi.getById(id);
                 setCourt(response.data || response);
             } catch (error) {
                 console.error("Lỗi:", error);
@@ -35,8 +35,14 @@ const CourtDetail = () => {
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Đang tải thông tin sân...</div>;
     if (!court) return <div style={{ textAlign: 'center', marginTop: '50px' }}>❌ Không tìm thấy sân!</div>;
 
-    // Ảnh chính (Ưu tiên ảnh DB, nếu lỗi dùng ảnh mẫu)
-    const mainImage = court.imageUrl || "https://via.placeholder.com/800x400";
+    // --- SỬA: Logic xử lý ảnh ---
+    let displayImage = court.imageUrl;
+    // Nếu có ảnh và không bắt đầu bằng http, thì nối thêm domain backend
+    if (displayImage && !displayImage.startsWith('http')) {
+        displayImage = `${BACKEND_URL}${displayImage}`;
+    }
+    // Nếu không có ảnh thì dùng ảnh placeholder
+    const mainImage = displayImage || "https://via.placeholder.com/800x400";
 
     return (
         <div className="court-detail-container">
@@ -98,7 +104,6 @@ const CourtDetail = () => {
                                 loading="lazy"
                             ></iframe>
                         </div>
-                        {/* Nút chỉ đường (Optional) */}
                         <div style={{ marginTop: '10px', textAlign: 'right' }}>
                             <a
                                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(court.address)}`}
@@ -112,7 +117,7 @@ const CourtDetail = () => {
                     </div>
                 </div>
 
-                {/* 3. CỘT PHẢI: BOOKING BOX (STICKY) */}
+                {/* 3. CỘT PHẢI: BOOKING BOX */}
                 <div className="right-sidebar">
                     <div className="booking-box-header">
                         <div className="price-highlight">
@@ -149,7 +154,6 @@ const CourtDetail = () => {
                 </div>
             </div>
 
-            {/* MODAL ĐẶT SÂN */}
             {showModal && (
                 <BookingModal
                     court={court}

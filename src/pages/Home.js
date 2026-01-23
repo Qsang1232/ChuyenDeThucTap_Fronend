@@ -7,6 +7,9 @@ import { SearchOutlined, EnvironmentOutlined } from '@ant-design/icons';
 const { Title, Text } = Typography;
 const { Meta } = Card;
 
+// --- THÊM: Định nghĩa URL Backend ---
+const BACKEND_URL = "http://localhost:8080";
+
 const Home = () => {
   const [courts, setCourts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,13 +42,19 @@ const Home = () => {
     });
   }, [filters, courts]);
 
+  // --- THÊM: Hàm xử lý link ảnh ---
+  const getImageUrl = (url) => {
+    if (!url) return "https://cdn.shopvnb.com/uploads/images/tin_tuc/bo-cau-long-1.webp"; // Ảnh mặc định
+    if (url.startsWith("http")) return url; // Nếu là link online thì giữ nguyên
+    return `${BACKEND_URL}${url}`; // Nếu là link local thì ghép localhost:8080 vào
+  };
+
   return (
     <div style={{ background: '#f0f2f5', minHeight: '100vh', paddingBottom: '50px' }}>
 
-      {/* 1. HERO BANNER - HIỆN ĐẠI */}
+      {/* 1. HERO BANNER */}
       <div style={{
         backgroundImage: 'linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url("/banner.jpg")',
-
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         height: '450px',
@@ -64,7 +73,7 @@ const Home = () => {
           Tìm kiếm sân chơi gần bạn, đặt lịch nhanh chóng và thanh toán tiện lợi chỉ trong vài bước.
         </Text>
 
-        {/* SEARCH BOX NỔI BẬT */}
+        {/* SEARCH BOX */}
         <div style={{
           background: 'white',
           padding: '15px',
@@ -124,9 +133,10 @@ const Home = () => {
                     bodyStyle={{ padding: '20px' }}
                     cover={
                       <div style={{ overflow: 'hidden', height: '220px', position: 'relative' }}>
+                        {/* --- SỬA: Gọi hàm getImageUrl --- */}
                         <img
                           alt={court.name}
-                          src={court.imageUrl || "https://cdn.shopvnb.com/uploads/images/tin_tuc/bo-cau-long-1.webp"}
+                          src={getImageUrl(court.imageUrl)}
                           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }}
                           className="hover:scale-110"
                           onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/400x200" }}

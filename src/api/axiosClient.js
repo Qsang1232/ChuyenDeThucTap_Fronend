@@ -2,10 +2,11 @@ import axios from 'axios';
 
 const axiosClient = axios.create({
     // Đọc baseURL từ biến môi trường đã định nghĩa trong file .env
-    baseURL: process.env.REACT_APP_API_URL,
+    baseURL: 'http://localhost:8080/api',
     headers: {
         'Content-Type': 'application/json',
     },
+
 });
 
 // Interceptor: Tự động gắn Token vào mỗi request gửi đi

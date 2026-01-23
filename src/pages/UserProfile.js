@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Card, Table, Tag, Typography, Avatar, Spin, message, Button, Popconfirm, Modal, Form, Input, Rate } from 'antd';
-import { UserOutlined, HistoryOutlined, PayCircleOutlined, StarOutlined, DeleteOutlined, QrcodeOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { UserOutlined, HistoryOutlined, QrcodeOutlined, StarOutlined, DeleteOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import bookingApi from '../api/bookingApi';
 import axiosClient from '../api/axiosClient';
@@ -52,12 +52,7 @@ const UserProfile = () => {
             return;
         }
         fetchHistory();
-
-        if (location.search.includes('payment=success')) {
-            message.success("Thanh toán thành công!");
-            window.history.replaceState({}, document.title, "/profile");
-        }
-    }, [user, navigate, fetchHistory, location]);
+    }, [user, navigate, fetchHistory]);
 
     // Hủy đơn
     const handleCancel = useCallback(async (id) => {
@@ -66,7 +61,8 @@ const UserProfile = () => {
             message.success("Đã hủy lịch thành công!");
             fetchHistory();
         } catch (error) {
-            message.error(error.response?.data?.message || "Hủy thất bại!");
+            const errorMsg = error.response?.data?.message || "Hủy thất bại!";
+            message.error(errorMsg);
         }
     }, [fetchHistory]);
 
@@ -76,14 +72,12 @@ const UserProfile = () => {
         setIsPaymentOpen(true);
     }, []);
 
-    // Xác nhận chuyển khoản -> Chuyển sang WAITING
+    // Xác nhận chuyển khoản
     const handleConfirmPayment = async () => {
         try {
             message.loading({ content: "Đang gửi yêu cầu...", key: 'pay' });
-
-            // Gọi API confirm-transfer (Backend chuyển status thành WAITING)
+            // Giả lập gọi API verify
             await bookingApi.verifyPayment(`?vnp_TxnRef=${currentBooking.id}&vnp_ResponseCode=00`);
-
             message.success({ content: "Đã gửi yêu cầu! Vui lòng chờ Admin duyệt.", key: 'pay' });
             setIsPaymentOpen(false);
             fetchHistory();
@@ -92,29 +86,42 @@ const UserProfile = () => {
         }
     };
 
-    // Modal Review
+    // Mở Modal Review
     const openReviewModal = useCallback((booking) => {
         setCurrentBooking(booking);
         setIsReviewOpen(true);
         form.resetFields();
     }, [form]);
 
-    // Gửi Review
+    // --- SỬA CHÍNH Ở ĐÂY: Thêm /api vào đường dẫn ---
     const handleReviewSubmit = async (values) => {
         try {
+            if (!currentBooking) {
+                message.error("Không tìm thấy đơn hàng!");
+                return;
+            }
+
+            // CHỈNH SỬA Ở ĐÂY: Xóa '/api', chỉ để lại '/reviews'
+            // Vì axiosClient đã tự động thêm '/api' ở đầu rồi.
             await axiosClient.post('/reviews', {
                 bookingId: currentBooking.id,
                 rating: values.rating,
                 comment: values.comment
             });
-            message.success("Đánh giá thành công!");
+
+            message.success("Đánh giá thành công! Cảm ơn bạn.");
             setIsReviewOpen(false);
+            form.resetFields();
+
         } catch (error) {
-            message.error("Lỗi gửi đánh giá!");
+            console.error("Lỗi đánh giá:", error);
+            const msg = error.response?.data?.message || "Lỗi kết nối Server!";
+            message.error(msg);
         }
     };
 
-    // Cấu hình Cột
+    // Cấu hình Cột Bảng
+    // Cấu hình Cột Bảng
     const columns = useMemo(() => [
         {
             title: 'Sân Cầu Lông',
@@ -154,7 +161,7 @@ const UserProfile = () => {
 
                 if (status === 'CONFIRMED') { color = 'green'; text = 'Đã duyệt'; }
                 else if (status === 'PENDING') { color = 'orange'; text = 'Chưa thanh toán'; }
-                else if (status === 'WAITING') { color = 'gold'; text = 'Chờ duyệt'; } // Trạng thái mới
+                else if (status === 'WAITING') { color = 'gold'; text = 'Chờ duyệt'; }
                 else if (status === 'CANCELLED') { color = 'red'; text = 'Đã hủy'; }
 
                 return <Tag color={color} className="min-w-[100px] text-center font-medium">{text}</Tag>;
@@ -166,7 +173,8 @@ const UserProfile = () => {
             width: 240,
             render: (_, record) => (
                 <div className="flex gap-2 justify-center items-center">
-                    {/* Nút THANH TOÁN QR (Chỉ hiện khi PENDING) */}
+
+                    {/* Nút Thanh toán (PENDING) */}
                     {record.status === 'PENDING' && (
                         <Button
                             type="primary" size="small"
@@ -178,15 +186,15 @@ const UserProfile = () => {
                         </Button>
                     )}
 
-                    {/* Thông báo Chờ duyệt (Khi WAITING) */}
+                    {/* Thông báo (WAITING) */}
                     {record.status === 'WAITING' && (
                         <span style={{ color: '#faad14', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <ClockCircleOutlined /> Đang xử lý...
                         </span>
                     )}
 
-                    {/* Nút ĐÁNH GIÁ (Khi CONFIRMED) */}
-                    {record.status === 'CONFIRMED' && (
+                    {/* --- LOGIC MỚI: Nút Đánh giá (chỉ hiện khi chưa đánh giá) --- */}
+                    {record.status === 'CONFIRMED' && !record.hasReviewed && (
                         <Button
                             size="small"
                             icon={<StarOutlined />}
@@ -197,8 +205,13 @@ const UserProfile = () => {
                         </Button>
                     )}
 
-                    {/* Nút HỦY (Hiện khi chưa Hủy/Hoàn thành) */}
-                    {(record.status !== 'CANCELLED' && record.status !== 'COMPLETED') && (
+                    {/* --- LOGIC MỚI: Nếu đã đánh giá rồi thì hiện Label --- */}
+                    {record.status === 'CONFIRMED' && record.hasReviewed && (
+                        <Tag color="cyan">Đã đánh giá</Tag>
+                    )}
+
+                    {/* Nút Hủy (PENDING) */}
+                    {record.status === 'PENDING' && (
                         <Popconfirm
                             title="Bạn chắc chắn muốn hủy?"
                             onConfirm={() => handleCancel(record.id)}

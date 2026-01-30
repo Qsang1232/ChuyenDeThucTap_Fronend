@@ -24,6 +24,14 @@ const BookingPage = () => {
         fetchCourts();
     }, []);
 
+    // Hàm xử lý ảnh: check mảng ảnh, check http, thêm domain backend
+    const getImageUrl = (court) => {
+        const url = court.imageUrls?.[0] || court.imageUrl;
+        if (!url) return "https://img.freepik.com/free-vector/badminton-court-indoor-scene_1308-53744.jpg";
+        if (url.startsWith('http')) return url;
+        return `http://localhost:8080${url.startsWith('/') ? '' : '/'}${url}`;
+    };
+
     const handleBookClick = (court) => {
         const user = localStorage.getItem('currentUser');
         if (!user) {
@@ -71,7 +79,7 @@ const BookingPage = () => {
                     <Col xs={24} sm={12} md={8} key={court.id}>
                         <Card
                             hoverable
-                            cover={<img alt={court.name} src={court.imageUrl || "https://img.freepik.com/free-vector/badminton-court-indoor-scene_1308-53744.jpg"} style={{ height: '200px', objectFit: 'cover' }} />}
+
                             actions={[
                                 <Button type="primary" style={{ background: '#2ecc71', borderColor: '#2ecc71' }} onClick={() => handleBookClick(court)}>
                                     Đặt Sân Ngay

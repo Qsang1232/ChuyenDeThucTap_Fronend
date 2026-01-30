@@ -35,14 +35,22 @@ const CourtDetail = () => {
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Đang tải thông tin sân...</div>;
     if (!court) return <div style={{ textAlign: 'center', marginTop: '50px' }}>❌ Không tìm thấy sân!</div>;
 
-    // --- SỬA: Logic xử lý ảnh ---
-    let displayImage = court.imageUrl;
-    // Nếu có ảnh và không bắt đầu bằng http, thì nối thêm domain backend
-    if (displayImage && !displayImage.startsWith('http')) {
-        displayImage = `${BACKEND_URL}${displayImage}`;
+    // --- LOGIC ẢNH MỚI (Hỗ trợ mảng ảnh) ---
+    const getFullUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http')) return url;
+        return `${BACKEND_URL}${url.startsWith('/') ? url : '/' + url}`;
+    };
+
+    // Lấy danh sách ảnh: ưu tiên mảng imageUrls, fallback về imageUrl cũ
+    let images = (court.imageUrls || []).map(getFullUrl).filter(Boolean);
+    if (images.length === 0 && court.imageUrl) {
+        const single = getFullUrl(court.imageUrl);
+        if (single) images.push(single);
     }
     // Nếu không có ảnh thì dùng ảnh placeholder
-    const mainImage = displayImage || "https://via.placeholder.com/800x400";
+
+    const mainImage = images.length > 0 ? images[0] : "https://cdn.shopvnb.com/uploads/images/tin_tuc/bo-cau-long-1.webp";
 
     return (
         <div className="court-detail-container">
@@ -50,11 +58,30 @@ const CourtDetail = () => {
             <div className="gallery-grid">
                 <div className="main-image">
                     <img
+                        className="display-img"
                         src={mainImage}
                         alt={court.name}
                         onError={(e) => { e.target.onerror = null; e.target.src = "https://cdn.shopvnb.com/uploads/images/tin_tuc/bo-cau-long-1.webp" }}
                     />
                 </div>
+                {/* List ảnh nhỏ (Gallery) */}
+                {images.length > 1 && (
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px', overflowX: 'auto' }}>
+                        {images.map((img, idx) => (
+                            <img
+                                key={idx}
+                                src={img}
+                                alt="thumbnail"
+                                style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #ddd' }}
+                                onClick={(e) => {
+                                    // Đổi ảnh chính khi click vào ảnh nhỏ
+                                    const main = document.querySelector('.display-img');
+                                    if (main) main.src = e.target.src;
+                                }}
+                            />
+                        ))}
+                    </div>
+                )}
 
             </div>
 
@@ -165,3 +192,4 @@ const CourtDetail = () => {
 };
 
 export default CourtDetail;
+

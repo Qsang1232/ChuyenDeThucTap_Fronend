@@ -1,14 +1,16 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import Footer from './components/Footer'; // Nhớ tạo file này
+import Footer from './components/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import CourtDetail from './pages/CourtDetail';
 import UserProfile from './pages/UserProfile';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
-// import BookingPage from './pages/BookingPage'; // Tạm ẩn nếu chưa dùng
+
+// --- 1. IMPORT CHATBOX ---
+import Chatbox from './components/Chatbox';
 
 function App() {
   return (
@@ -18,15 +20,12 @@ function App() {
 
         <Navbar />
 
-        {/* Phần nội dung chính (Co giãn để đẩy Footer xuống) */}
+        {/* Phần nội dung chính */}
         <div style={{ flex: 1, background: '#f8f9fa' }}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/court/:id" element={<CourtDetail />} />
-
-            {/* Route Booking (Nếu cần trang riêng) */}
-            {/* <Route path="/booking" element={<BookingPage />} /> */}
 
             {/* Các trang cần đăng nhập (User) */}
             <Route path="/profile" element={
@@ -45,6 +44,10 @@ function App() {
         </div>
 
         <Footer />
+
+        {/* --- 2. ĐẶT CHATBOX Ở ĐÂY ĐỂ HIỂN THỊ MỌI LÚC --- */}
+        <Chatbox />
+
       </div>
     </BrowserRouter>
   );

@@ -72,16 +72,20 @@ const UserProfile = () => {
         setIsPaymentOpen(true);
     }, []);
 
-    // Xác nhận chuyển khoản
+    // Xác nhận chuyển khoản (SỬA LOGIC)
     const handleConfirmPayment = async () => {
         try {
             message.loading({ content: "Đang gửi yêu cầu...", key: 'pay' });
-            // Giả lập gọi API verify
-            await bookingApi.verifyPayment(`?vnp_TxnRef=${currentBooking.id}&vnp_ResponseCode=00`);
+
+            // --- SỬA: Gọi đúng API xác nhận thủ công (set status = WAITING) ---
+            // Backend: PaymentController -> confirmTransfer(@RequestParam bookingId)
+            await axiosClient.post(`/payment/confirm-transfer?bookingId=${currentBooking.id}`);
+
             message.success({ content: "Đã gửi yêu cầu! Vui lòng chờ Admin duyệt.", key: 'pay' });
             setIsPaymentOpen(false);
             fetchHistory();
         } catch (error) {
+            console.error(error);
             message.error({ content: "Lỗi xác nhận!", key: 'pay' });
         }
     };
@@ -93,7 +97,7 @@ const UserProfile = () => {
         form.resetFields();
     }, [form]);
 
-    // --- SỬA CHÍNH Ở ĐÂY: Thêm /api vào đường dẫn ---
+    // Gửi đánh giá
     const handleReviewSubmit = async (values) => {
         try {
             if (!currentBooking) {
@@ -101,8 +105,7 @@ const UserProfile = () => {
                 return;
             }
 
-            // CHỈNH SỬA Ở ĐÂY: Xóa '/api', chỉ để lại '/reviews'
-            // Vì axiosClient đã tự động thêm '/api' ở đầu rồi.
+            // Gọi API tạo review
             await axiosClient.post('/reviews', {
                 bookingId: currentBooking.id,
                 rating: values.rating,
@@ -113,6 +116,9 @@ const UserProfile = () => {
             setIsReviewOpen(false);
             form.resetFields();
 
+            // Load lại danh sách để cập nhật trạng thái "Đã đánh giá"
+            fetchHistory();
+
         } catch (error) {
             console.error("Lỗi đánh giá:", error);
             const msg = error.response?.data?.message || "Lỗi kết nối Server!";
@@ -120,7 +126,6 @@ const UserProfile = () => {
         }
     };
 
-    // Cấu hình Cột Bảng
     // Cấu hình Cột Bảng
     const columns = useMemo(() => [
         {
@@ -193,7 +198,7 @@ const UserProfile = () => {
                         </span>
                     )}
 
-                    {/* --- LOGIC MỚI: Nút Đánh giá (chỉ hiện khi chưa đánh giá) --- */}
+                    {/* Nút Đánh giá (chỉ hiện khi CONFIRMED và chưa đánh giá) */}
                     {record.status === 'CONFIRMED' && !record.hasReviewed && (
                         <Button
                             size="small"
@@ -205,7 +210,7 @@ const UserProfile = () => {
                         </Button>
                     )}
 
-                    {/* --- LOGIC MỚI: Nếu đã đánh giá rồi thì hiện Label --- */}
+                    {/* Label Đã đánh giá */}
                     {record.status === 'CONFIRMED' && record.hasReviewed && (
                         <Tag color="cyan">Đã đánh giá</Tag>
                     )}
